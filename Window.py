@@ -1,6 +1,7 @@
 import pyglet
 from pyglet.window import key
 from Player import Player
+#wwwwfrom PlayerTesting import Player
 
 
 player = Player()
@@ -30,9 +31,9 @@ if __name__ == '__main__':
 
     def update(dt):
         player.update_player(dt)
-        #player.update_player(0.016)
-        label.text = str(int(player.velocity[0]))
-        speed.text = str(int(player.speed_long))
+        #player.update_player(0.001)
+        label.text = str(int(player.steering))
+        speed.text = str(int(player.velocity_angular_car))
 
     @window.event
     def on_key_press(symbol, modifiers):
@@ -41,9 +42,9 @@ if __name__ == '__main__':
         elif symbol == key.S:
             player.braking_pedal = 1
         elif symbol == key.A:
-            player.rot = -1
+            player.steering = -1
         elif symbol == key.D:
-            player.rot = 1
+            player.steering = 1
 
     @window.event
     def on_key_release(symbol, modifiers):
@@ -52,9 +53,9 @@ if __name__ == '__main__':
         elif symbol == key.S:
             player.braking_pedal = 0
         elif symbol == key.A:
-            player.rot = 0
+            player.steering = 0
         elif symbol == key.D:
-            player.rot = 0
+            player.steering = 0
 
 
     pyglet.clock.schedule_interval(update, 1 / 50.0)

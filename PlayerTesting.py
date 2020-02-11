@@ -101,6 +101,7 @@ class Player(pyglet.sprite.Sprite):
             force_lat += 1.4 * force_lat_front
         self.change_gear(rpm)
         acceleration_long = force_long / car_mass
+        print(acceleration_long)
         self.acceleration_last = acceleration_long
         acceleration_lat = force_lat / car_mass
         self.velocity_angular_car *= 0.95
@@ -113,6 +114,7 @@ class Player(pyglet.sprite.Sprite):
         self.speed_long += dt * acceleration_long
         self.speed_lat += dt * acceleration_lat
         vel_x, vel_y = matrix.dot(np.array([self.speed_long, self.speed_lat]))
+        print(vel_x, vel_y)
         self.x += 5.5 * dt * vel_x
         self.y += 5.5 * dt * vel_y
 
