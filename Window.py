@@ -1,39 +1,47 @@
 import pyglet
 from pyglet.window import key
 from Player import Player
-#wwwwfrom PlayerTesting import Player
+import numpy as np
 
-
-player = Player()
+network = np.load('bp.npy', allow_pickle=True)
+player = Player(network)
 label = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
                           font_size=20,
-                          x=100, y=100,
+                          x=1800, y=1000,
                           anchor_x='center', anchor_y='center')
-speed = pyglet.text.Label('Hello, world',
+left = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
                           font_size=20,
-                          x=100, y=200,
+                          x=1800, y=900,
                           anchor_x='center', anchor_y='center')
-
+right = pyglet.text.Label('Hello, world',
+                          font_name='Times New Roman',
+                          font_size=20,
+                          x=1800, y=800,
+                          anchor_x='center', anchor_y='center')
+track_graphic = pyglet.image.load('track.jpeg')
 
 if __name__ == '__main__':
-    window = pyglet.window.Window(width=1900, height=1000, caption="Car")
+    window = pyglet.window.Window(width=1920, height=1080, caption="Car")
     pyglet.gl.glClearColor(0.5, 0.5, 0.5, 0.5)
 
     @window.event
     def on_draw():
         window.clear()
+        track_graphic.blit(0, 0)
         player.draw()
         label.draw()
-        speed.draw()
+        left.draw()
+        #right.draw()
 
 
     def update(dt):
+        if player.counter == 5:
+            player.think()
         player.update_player(dt)
-        #player.update_player(0.001)
-        label.text = str(int(player.steering))
-        speed.text = str(int(player.velocity_angular_car))
+        label.text = str(int(player.score))
+        left.text = str(player.alive)
 
     @window.event
     def on_key_press(symbol, modifiers):
@@ -58,6 +66,5 @@ if __name__ == '__main__':
             player.steering = 0
 
 
-    pyglet.clock.schedule_interval(update, 1 / 50.0)
-    #pyglet.clock.schedule_interval(update, 1 / 2.0)
+    pyglet.clock.schedule_interval(update, 0.01)
     pyglet.app.run()
