@@ -1,47 +1,58 @@
+import math
+
 import pyglet
 from pyglet.window import key
 from Player import Player
 import numpy as np
+from PIL import Image
 
 network = np.load('bp.npy', allow_pickle=True)
+#network = [([[-0.0001, 0., 1., 1., 1., 0.], [0., -0.3, -0.5, -1., -0.5, -0.3], [0., 0.1, 0.3, 0., -0.3, -0.1]], [1., -1., 0.])]
 player = Player(network)
 label = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
                           font_size=20,
-                          x=1800, y=1000,
-                          anchor_x='center', anchor_y='center')
+                          x=50, y=700,
+                          anchor_x='center', anchor_y='center', color=(0, 255, 255, 255))
 left = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
                           font_size=20,
-                          x=1800, y=900,
-                          anchor_x='center', anchor_y='center')
+                          x=50, y=600,
+                          anchor_x='center', anchor_y='center', color=(0, 255, 255, 255))
 right = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
                           font_size=20,
-                          x=1800, y=800,
-                          anchor_x='center', anchor_y='center')
-track_graphic = pyglet.image.load('track.jpeg')
+                          x=50, y=500,
+                          anchor_x='center', anchor_y='center', color=(0, 255, 255, 255))
+track = pyglet.sprite.Sprite(pyglet.image.load('track_graphics.jpg'))
+acc = 0
+brk = 0
+ste = 0
 
 if __name__ == '__main__':
-    window = pyglet.window.Window(width=1920, height=1080, caption="Car")
-    pyglet.gl.glClearColor(0.5, 0.5, 0.5, 0.5)
+    window = pyglet.window.Window(width=1920, height=1080, caption="Car", fullscreen=True)
+    pyglet.gl.glClearColor(1., 1., 1., 1.)
 
     @window.event
     def on_draw():
         window.clear()
-        track_graphic.blit(0, 0)
+        track.draw()
         player.draw()
         label.draw()
         left.draw()
-        #right.draw()
+        right.draw()
 
 
     def update(dt):
         if player.counter == 5:
+            player.counter = 0
             player.think()
-        player.update_player(dt)
-        label.text = str(int(player.score))
-        left.text = str(player.alive)
+        player.update_player()
+        track.x = 960-player.pos_x
+        track.y = 540-player.pos_y
+        label.text = str(player.alive)
+        left.text = str(round(player.score, 2))
+        right.text = str(round(player.velocity_local_x, 2))
 
     @window.event
     def on_key_press(symbol, modifiers):
