@@ -25,9 +25,6 @@ right = pyglet.text.Label('Hello, world',
                           x=50, y=500,
                           anchor_x='center', anchor_y='center', color=(0, 255, 255, 255))
 track = pyglet.sprite.Sprite(pyglet.image.load('track_graphics.jpg'))
-acc = 0
-brk = 0
-ste = 0
 
 if __name__ == '__main__':
     window = pyglet.window.Window(width=1920, height=1080, caption="Car", fullscreen=True)
@@ -46,7 +43,7 @@ if __name__ == '__main__':
     def update(dt):
         if player.counter == 5:
             player.counter = 0
-            player.think()
+            #player.think()
         player.update_player()
         track.x = 960-player.pos_x
         track.y = 540-player.pos_y

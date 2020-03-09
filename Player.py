@@ -151,7 +151,6 @@ class Player(pyglet.sprite.Sprite):
             self.velocity_y = 0
             angular_torque = 0
             self.velocity_angular = 0
-            self.death_counter += 1
 
         acceleration_angular = angular_torque/inertia
         self.velocity_angular += dt * acceleration_angular
@@ -197,6 +196,6 @@ class Player(pyglet.sprite.Sprite):
     def sensor(self, sin, cos):
         for i in range(0, int(250*scale), int(scale)):
             if track[int(self.pos_y - i * sin)][int(self.pos_x + i * cos)] > 20:
-                return i / scale/250
+                return (i / scale / 250 - 1)**3+1
         return 1
 

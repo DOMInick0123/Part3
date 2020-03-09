@@ -224,7 +224,7 @@ class Player:
     def sensor(self, sin, cos):
         for i in range(0, int(250 * scale), int(scale)):
             if track[int(self.y - i * sin)][int(self.x + i * cos)] > 20:
-                return i / scale / 250
+                return (i / scale / 250 - 1)**3+1
         return 1
 
     def copy(self):
