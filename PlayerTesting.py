@@ -37,7 +37,7 @@ final_ratios = [differential_ratio * i for i in gear_ratios]
 
 transmission_efficiency = 1.
 to_rad = 30 / (math.pi * wheel_radius)
-track = np.array(Image.open('track_graphics.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+track = np.array(Image.open('test_track.jpg').transpose(Image.FLIP_TOP_BOTTOM))
 
 
 def rpm_to_torque(rpm):
@@ -46,9 +46,9 @@ def rpm_to_torque(rpm):
 
 class Player:
     def __init__(self, network=None):
-        self.x = 80.
-        self.y = 480.
-        self.rotation = math.radians(-52)
+        self.x = 300.
+        self.y = 280.
+        self.rotation = math.radians(0)
         self.sin_rotation = math.sin(self.rotation)
         self.cos_rotation = math.cos(self.rotation)
         self.steering = 0.
@@ -117,7 +117,7 @@ class Player:
         # transforming velocity from global to local coordinates
         self.velocity_local_x = self.cos_rotation * self.velocity_x - self.sin_rotation * self.velocity_y
         self.velocity_local_y = self.cos_rotation * self.velocity_y + self.sin_rotation * self.velocity_x
-        steering_angle = 0.2 * self.steering  # angle in range -0.38 to 0.38 rad
+        steering_angle = 0.38 * self.steering  # angle in range -0.38 to 0.38 rad
 
         # Weight on wheels
         car_mass = mass + self.fuel
@@ -170,7 +170,7 @@ class Player:
             angular_torque = 0
             self.velocity_angular = 0
             self.death_counter += 1
-        elif speed < 5:
+        elif speed < 10:
             self.death_counter += 1
             if self.death_counter >= 100:
                 self.score = self.distance * 0.01 - 0.001 * self.alive_counter

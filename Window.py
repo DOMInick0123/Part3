@@ -24,10 +24,10 @@ right = pyglet.text.Label('Hello, world',
                           font_size=20,
                           x=50, y=500,
                           anchor_x='center', anchor_y='center', color=(0, 255, 255, 255))
-track = pyglet.sprite.Sprite(pyglet.image.load('track_graphics.jpg'))
+track = pyglet.sprite.Sprite(pyglet.image.load('test_track.jpg'))
 
 if __name__ == '__main__':
-    window = pyglet.window.Window(width=1920, height=1080, caption="Car", fullscreen=True)
+    window = pyglet.window.Window(width=1920, height=1080, caption="Car")
     pyglet.gl.glClearColor(1., 1., 1., 1.)
 
     @window.event
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     def update(dt):
         if player.counter == 5:
             player.counter = 0
-            #player.think()
+            player.think()
         player.update_player()
         track.x = 960-player.pos_x
         track.y = 540-player.pos_y

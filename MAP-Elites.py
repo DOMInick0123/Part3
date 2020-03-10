@@ -14,12 +14,12 @@ lateral = 10
 fc_c = 10
 
 best_player = Player()
-thread_count = 1
-population_size = 1
+thread_count = 16
+population_size = 1024
 players = []
-#networks = np.load('grid.npy', allow_pickle=True)
-#for network in networks:
-    #players.append(Player(network))
+networks = np.load('grid.npy', allow_pickle=True)
+for network in networks:
+    players.append(Player(network))
 while len(players) < population_size:
     players.append(Player())
 player_counter = len(players)
@@ -44,9 +44,9 @@ def thread_function():
 
 
 def get_random_player():
-    p1 = player_grid[randrange(acc_pedal)][randrange(brk_pedal)][randrange(dis_c)][randrange(lateral)]
+    p1 = player_grid[randrange(acc_pedal)][randrange(brk_pedal)][randrange(dis_c)][randrange(lateral)][randrange(fc_c)]
     while p1 == 0:
-        p1 = player_grid[randrange(acc_pedal)][randrange(brk_pedal)][randrange(dis_c)][randrange(lateral)]
+        p1 = player_grid[randrange(acc_pedal)][randrange(brk_pedal)][randrange(dis_c)][randrange(lateral)][randrange(fc_c)]
     return p1
 
 
@@ -72,7 +72,7 @@ if __name__ == '__main__':
             brk = int(brk_pedal/2*(math.tanh(5*(player.avg_brk/player.alive_counter*physics_engine-0.3))+1))
             dis = int(dis_c/2*(math.tanh(5*player.avg_dis/player.alive_counter*physics_engine)+1))
             lat = min(int(player.max_lateral/20000*lateral), 9)
-            fc = player.distance/(100.-player.fuel)
+            fc = min(int(math.tanh(player.distance/(100.-player.fuel)/3000)*fc_c), 9)
             grid_player = player_grid[acc, brk, dis, lat, fc]
             if grid_player == 0 or player.score > grid_player.score:
                 player_grid[acc, brk, dis, lat, fc] = player
@@ -84,7 +84,7 @@ if __name__ == '__main__':
                 networks.append(p.network)
                 filled += 1
         print("Gen:", gen, "Best score:", best_player.score, 'Filled spaces in grid:', filled, '/', acc_pedal*brk_pedal*dis_c*lateral*fc_c)
-        f.write("Gen: "+str(gen)+", Best score: "+str(best_player.score)+" Filled spaces in grid: "+str(filled)+"/"+str(acc_pedal*brk_pedal*dis_c*lateral*fc_c))
+        f.write("Gen: "+str(gen)+", Best score: "+str(best_player.score)+" Filled spaces in grid: "+str(filled)+"/"+str(acc_pedal*brk_pedal*dis_c*lateral*fc_c)+'\n')
         np.save('grid.npy', np.asarray(networks), allow_pickle=True)
         gen += 1
         if gen == 300:

@@ -38,7 +38,7 @@ final_ratios = [differential_ratio * i for i in gear_ratios]
 
 transmission_efficiency = 1.
 to_rad = 30 / (math.pi * wheel_radius)
-track = np.array(Image.open('track_graphics.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+track = np.array(Image.open('test_track.jpg').transpose(Image.FLIP_TOP_BOTTOM))
 
 
 def rpm_to_torque(rpm):
@@ -54,7 +54,7 @@ class Player(pyglet.sprite.Sprite):
             self.img.anchor_x = int((rear_wing+c)*scale)
             self.img.anchor_y = int(width*scale/2)
         pyglet.sprite.Sprite.__init__(self, self.img, x=960, y=540)
-        self.rotation = -52
+        self.rotation = 0
         self.rot = math.radians(self.rotation)
         self.sin_rotation = math.sin(self.rot)
         self.cos_rotation = math.cos(self.rot)
@@ -77,8 +77,8 @@ class Player(pyglet.sprite.Sprite):
         self.score = 0.
         self.alive_counter = 0.
         self.distance = 0.
-        self.pos_x = 80.
-        self.pos_y = 480.
+        self.pos_x = 300.
+        self.pos_y = 280.
 
     def update_player(self, dt=0.01):
         self.alive_counter += 1
@@ -104,7 +104,7 @@ class Player(pyglet.sprite.Sprite):
         # transforming velocity from global to local coordinates
         self.velocity_local_x = self.cos_rotation*self.velocity_x - self.sin_rotation*self.velocity_y
         self.velocity_local_y = self.cos_rotation*self.velocity_y + self.sin_rotation*self.velocity_x
-        steering_angle = 0.2 * self.steering  # angle in range -0.38 to 0.38 rad
+        steering_angle = 0.38 * self.steering  # angle in range -0.38 to 0.38 rad
 
         # Weight on wheels
         car_mass = mass + self.fuel
