@@ -1,31 +1,31 @@
-from random import random, gauss
+from random import random
 import math
 import numpy as np
 from PIL import Image
 
 
 # constants
-b = 1.5  # in m, distance from CG to front axle
-c = 1.5  # in m, distance from CG to rear axle
-wheelbase = b+c  # in m, distance between axles
-h = 0.35  # in m, height of CG from ground
+b = 1.2  # in m, distance from CG to front axle
+c = 1.8  # in m, distance from CG to rear axle
+wheelbase = b + c  # in m, distance between axles
+h = 0.25  # in m, height of CG from ground
 front_wing = 1.1  # in m, distance from front axle to front of the car
 rear_wing = 0.7  # in m, distance from rear axle to rear of the car
-mass = 1200.  # in kg
-length = wheelbase+front_wing+rear_wing  # in m
+mass = 750.  # in kg
+length = wheelbase + front_wing + rear_wing  # in m
 width = 1.8  # in m
-inertia = 1200  # in kg.m**2
+inertia = mass*(h**2+length**2)/12  # in kg.m**2
 wheel_radius = 0.4  # in m
 drag = 0.4  # constant for drag resistance
-rr = 30*drag  # constant for rolling resistance
+rr = 30 * drag  # constant for rolling resistance
 ca_r = -5.2  # cornering stiffness for rear wheels
 ca_f = -5.  # cornering stiffness for front wheels
-tyre_grip = 2.  # diameter of friction circle
+tyre_grip = 2.5  # diameter of friction circle
 braking_constant = 13000.
 gear_ratios = [2.66, 1.78, 1.3, 1., 0.74, 0.5]
-differential_ratio = 4.
+differential_ratio = 3.42
 g = 9.81
-scale = 3.
+scale = 5.
 
 # precalculated values
 h_L = h / wheelbase
@@ -34,28 +34,35 @@ c_L = c / wheelbase
 front_cg = b+front_wing * scale
 side_cg = width/2 * scale
 final_ratios = [differential_ratio * i for i in gear_ratios]
+a_rpm = -17/1015000
+b_rpm = 2363/20300
+c_rpm = 8596/29
 
-transmission_efficiency = 1.
-to_rad = 30 / (math.pi * wheel_radius)
+transmission_efficiency = 0.8
+rad_to_rpm = 30 / (math.pi * wheel_radius)
 track = np.array(Image.open('test_track.jpg').transpose(Image.FLIP_TOP_BOTTOM))
 
 
 def rpm_to_torque(rpm):
-    return max(((-0.000017 * rpm + 0.119) * rpm + 288.75), 1000)
+    return max(((a_rpm * rpm + b_rpm) * rpm + c_rpm), 1000)
 
 
-class Player:
+class Car:
+    anch_x = int((rear_wing + c) * scale)
+    anch_y = int(width * scale / 2)
+
     def __init__(self, network=None):
-        self.x = 300.
-        self.y = 280.
-        self.rotation = math.radians(0)
-        self.sin_rotation = math.sin(self.rotation)
-        self.cos_rotation = math.cos(self.rotation)
+        self.pos_x = 800.
+        self.pos_y = 450.
+        self.rot_rad = math.radians(0)
+        self.sin_rotation = math.sin(self.rot_rad)
+        self.cos_rotation = math.cos(self.rot_rad)
         self.steering = 0.
         self.wheel_position = 0.
         self.acceleration_pedal = 0.
         self.braking_pedal = 0.
         self.gear = 0
+        self.rpm = 1000.
         self.acceleration_last = 0
         self.velocity_x = 0.
         self.velocity_y = 0.
@@ -75,7 +82,7 @@ class Player:
         self.max_lateral = 0.
         if network is None:
             self.network = []
-            layers = (8, 8, 3)
+            layers = (8, 6, 3)
             for i in range(len(layers) - 1):
                 weights = []
                 bias = []
@@ -83,13 +90,13 @@ class Player:
                     row = []
                     for k in range(layers[i]):
                         row.append(random() * 2 - 1)
-                    bias.append(random() * 2 - 1)
+                    bias.append(len(row)*(random() * 2 - 1))
                     weights.append(row)
                 self.network.append((weights, bias))
         else:
             self.network = network
 
-    def update_player(self, dt=0.01):
+    def update_car(self, dt=0.01):
         if not self.alive:
             return
         self.alive_counter += 1
@@ -103,8 +110,8 @@ class Player:
                 self.wheel_position = min(self.wheel_position + dt * 1.0, 0)
 
         # collision detection
-        front_x = self.x + self.cos_rotation * front_cg
-        front_y = self.y - self.sin_rotation * front_cg
+        front_x = self.pos_x + self.cos_rotation * front_cg
+        front_y = self.pos_y - self.sin_rotation * front_cg
         left_x = front_x + self.sin_rotation * side_cg
         left_y = front_y + self.cos_rotation * side_cg
         right_x = front_x - self.sin_rotation * side_cg
@@ -139,11 +146,11 @@ class Player:
         self.max_lateral = max(force_lat, self.max_lateral)
 
         # traction force from engine and brakes
-        rpm = self.velocity_local_x * final_ratios[self.gear] * to_rad
-        force_drive = rpm_to_torque(rpm) * final_ratios[self.gear] * self.acceleration_pedal / wheel_radius
+        self.rpm = self.velocity_local_x * final_ratios[self.gear] * rad_to_rpm
+        torque_engine = rpm_to_torque(self.rpm) * self.acceleration_pedal
+        force_drive = torque_engine * final_ratios[self.gear] * transmission_efficiency / wheel_radius
         force_brake = braking_constant * self.braking_pedal
-        self.fuel -= dt * force_drive / 100000
-        self.change_gear(rpm)
+        self.fuel -= dt * torque_engine / 100000
         force_traction = force_drive - force_brake * np.sign(self.velocity_local_x)
         force_resistance = (drag * self.velocity_local_x + rr) * self.velocity_local_x
         force_long = force_traction - force_resistance
@@ -172,29 +179,27 @@ class Player:
             self.death_counter += 1
         elif speed < 10:
             self.death_counter += 1
-            if self.death_counter >= 100:
+            if self.death_counter >= 500:
                 self.score = self.distance * 0.01 - 0.001 * self.alive_counter
                 self.alive = False
                 return
-        else:
-            self.death_counter = 0
 
         acceleration_angular = angular_torque / inertia
         self.velocity_angular += dt * acceleration_angular
 
         if self.velocity_angular != 0:
-            self.rotation += dt * self.velocity_angular
-            self.sin_rotation = math.sin(self.rotation)
-            self.cos_rotation = math.cos(self.rotation)
+            self.rot_rad += dt * self.velocity_angular
+            self.sin_rotation = math.sin(self.rot_rad)
+            self.cos_rotation = math.cos(self.rot_rad)
 
-        self.x += scale * dt * self.velocity_x
-        self.y += scale * dt * self.velocity_y
+        self.pos_x += scale * dt * self.velocity_x
+        self.pos_y += scale * dt * self.velocity_y
 
     def think(self):
-        cos_30 = math.cos(self.rotation + math.radians(30))
-        sin_30 = math.sin(self.rotation + math.radians(30))
-        cos_60 = math.cos(self.rotation + math.radians(60))
-        sin_60 = math.sin(self.rotation + math.radians(60))
+        cos_30 = math.cos(self.rot_rad + math.radians(30))
+        sin_30 = math.sin(self.rot_rad + math.radians(30))
+        cos_60 = math.cos(self.rot_rad + math.radians(60))
+        sin_60 = math.sin(self.rot_rad + math.radians(60))
         sensor_m60 = self.sensor(-cos_30, sin_30)
         sensor_60 = self.sensor(sin_60, cos_60)
         self.avg_dis += sensor_60 - sensor_m60
@@ -214,61 +219,19 @@ class Player:
         self.braking_pedal = (outputs[1] + 1) / 2
         self.avg_brk += self.braking_pedal
         self.steering = outputs[2]
-
-    def change_gear(self, rpm):
-        if rpm > 4600 and self.gear < 5:
+        if self.rpm > 5500:
             self.gear += 1
-        elif rpm < 2000 and self.gear > 0:
+            self.gear = min(5, self.gear)
+        if self.rpm < 2000:
             self.gear -= 1
+            self.gear = max(0, self.gear)
 
     def sensor(self, sin, cos):
         for i in range(0, int(250 * scale), int(scale)):
-            if track[int(self.y - i * sin)][int(self.x + i * cos)] > 20:
+            if track[int(self.pos_y - i * sin)][int(self.pos_x + i * cos)] > 20:
                 return (i / scale / 250 - 1)**3+1
         return 1
 
     def copy(self):
         from copy import deepcopy
-        return Player(deepcopy(self.network))
-
-    def crossover(self, parent2):
-        network = []
-        for i in range(len(self.network)):
-            weights = []
-            bias = []
-            for j in range(len(self.network[i][0])):
-                row = []
-                for k in range(len(self.network[i][0][j])):
-                    if random() < 0.5:
-                        row.append(self.network[i][0][j][k])
-                    else:
-                        row.append(parent2.network[i][0][j][k])
-                weights.append(row)
-                if random() < 0.5:
-                    bias.append(self.network[i][1][j])
-                else:
-                    bias.append(parent2.network[i][1][j])
-            network.append((weights, bias))
-        p = Player(network)
-        p.mutate()
-        return p
-
-    def mutate(self):
-        for layer in self.network:
-            for i in range(len(layer[0])):
-                for j in range(len(layer[0][i])):
-                    rand = random()
-                    if rand < 0.5:
-                        layer[0][i][j] += gauss(0, 1) / 50
-                        layer[0][i][j] = min(layer[0][i][j], 1)
-                        layer[0][i][j] = max(layer[0][i][j], -1)
-                    elif rand > 0.9:
-                        layer[0][i][j] = random() * 2 - 1
-            for i in range(len(layer[1])):
-                rand = random()
-                if rand < 0.5:
-                    layer[1][i] += gauss(0, 1) / 50
-                    layer[1][i] = min(layer[1][i], 1)
-                    layer[1][i] = max(layer[1][i], -1)
-                elif rand > 0.9:
-                    layer[1][i] = random() * 2 - 1
+        return Car(deepcopy(self.network))
