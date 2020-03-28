@@ -1,4 +1,4 @@
-from random import random
+from random import random, gauss, choice
 import math
 import numpy as np
 from PIL import Image
@@ -41,6 +41,8 @@ c_rpm = 8596/29
 transmission_efficiency = 0.8
 rad_to_rpm = 30 / (math.pi * wheel_radius)
 track = np.array(Image.open('test_track.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+input_nodes_no = 8+1  # sensors + bias node
+output_nodes_no = 3
 
 
 def rpm_to_torque(rpm):
@@ -50,6 +52,7 @@ def rpm_to_torque(rpm):
 class Car:
     anch_x = int((rear_wing + c) * scale)
     anch_y = int(width * scale / 2)
+    innovations = []
 
     def __init__(self, network=None):
         self.pos_x = 800.
@@ -80,26 +83,47 @@ class Car:
         self.avg_fc = 0.
         self.avg_dis = 0.
         self.max_lateral = 0.
+        self.max_node = input_nodes_no + output_nodes_no
+        self.nodes = {}
+        for i in range(input_nodes_no):
+            self.nodes[i] = 0
+        for i in range(output_nodes_no):
+            self.nodes[i+input_nodes_no] = 1
         if network is None:
-            self.network = []
-            layers = (8, 6, 3)
-            for i in range(len(layers) - 1):
-                weights = []
-                bias = []
-                for j in range(layers[i + 1]):
-                    row = []
-                    for k in range(layers[i]):
-                        row.append(random() * 2 - 1)
-                    bias.append(len(row)*(random() * 2 - 1))
-                    weights.append(row)
-                self.network.append((weights, bias))
+            self.connections = []
+            for i in range(input_nodes_no):
+                for j in range(output_nodes_no):
+                    if random() > 0.6:
+                        added = False
+                        for k in range(len(Car.innovations)):
+                            if Car.innovations[k] == (i, input_nodes_no+j):
+                                self.connections.append([0, (i, input_nodes_no+j), random()*2-1, True, k])
+                                added = True
+                                break
+                        if not added:
+                            self.connections.append([0, (i, input_nodes_no+j), random() * 2 - 1, True, len(Car.innovations)])
+                            Car.innovations.append((i, input_nodes_no+j))
         else:
-            self.network = network
+            self.connections = network
+            for connection in self.connections:
+                while len(Car.innovations) < connection[4]+1:
+                    Car.innovations.append(None)
+                if Car.innovations[connection[4]] is None:
+                    Car.innovations[connection[4]] = connection[1]
+                if not connection[1][0] in self.nodes:
+                    self.nodes[connection[1][0]] = connection[0]
+                if connection[1][1] in self.nodes:
+                    self.nodes[connection[1][1]] = max(self.nodes[connection[1][1]], connection[0]+1)
+                else:
+                    self.nodes[connection[1][1]] = connection[0]+1
+                if connection[1][1] > self.max_node:
+                    self.max_node = connection[1][1]
 
     def update_car(self, dt=0.01):
-        if not self.alive:
+        if self.alive:
+            self.alive_counter += 1
+        else:
             return
-        self.alive_counter += 1
 
         if abs(self.steering) > 0.001:
             self.wheel_position = min(max(self.wheel_position + self.steering * dt * 2.0, -1.0), 1.0)
@@ -117,7 +141,7 @@ class Car:
         right_x = front_x - self.sin_rotation * side_cg
         right_y = front_y - self.cos_rotation * side_cg
         if track[int(left_y)][int(left_x)] > 20 or track[int(right_y)][int(right_x)] > 20:
-            self.score = self.distance * 0.01 - 0.001 * self.alive_counter
+            self.score = self.distance * 0.01 - 0.0001 * self.alive_counter
             self.alive = False
             return
 
@@ -168,7 +192,7 @@ class Car:
         speed = (self.velocity_x ** 2 + self.velocity_y ** 2) ** 0.5
         self.distance += dt*speed
         if self.distance > 10000:
-            self.score = self.distance * 0.01 - 0.001 * self.alive_counter
+            self.score = self.distance * 0.01 - 0.0001 * self.alive_counter
             self.alive = False
             return
         if speed < 0.5 and self.acceleration_pedal == 0:
@@ -179,10 +203,10 @@ class Car:
             self.death_counter += 1
         elif speed < 10:
             self.death_counter += 1
-            if self.death_counter >= 500:
-                self.score = self.distance * 0.01 - 0.001 * self.alive_counter
-                self.alive = False
-                return
+        if self.death_counter >= 500:
+            self.score = self.distance * 0.01 - 0.0001 * self.alive_counter
+            self.alive = False
+            return
 
         acceleration_angular = angular_torque / inertia
         self.velocity_angular += dt * acceleration_angular
@@ -203,22 +227,21 @@ class Car:
         sensor_m60 = self.sensor(-cos_30, sin_30)
         sensor_60 = self.sensor(sin_60, cos_60)
         self.avg_dis += sensor_60 - sensor_m60
-        inputs = [self.velocity_local_x/65.234, self.velocity_local_y/30., self.velocity_angular, sensor_m60, self.sensor(-cos_60, sin_60),
+        values = [self.velocity_local_x / 65.234, self.velocity_local_y / 30., self.velocity_angular, sensor_m60,
+                  self.sensor(-cos_60, sin_60),
                   self.sensor(self.sin_rotation, self.cos_rotation), self.sensor(sin_30, cos_30), sensor_60]
-        outputs = []
-        for layer in self.network:
-            outputs.clear()
-            for i in range(len(layer[1])):
-                val = layer[1][i]
-                for j in range(len(layer[0][i])):
-                    val += layer[0][i][j] * inputs[j]
-                outputs.append(math.tanh(val))
-            inputs = outputs.copy()
-        self.acceleration_pedal = (outputs[0] + 1) / 2
+        while len(values) < self.max_node+1:
+            values.append(0.0)
+        for connection in self.connections:
+            if connection[3]:
+                values[connection[1][1]] += values[connection[1][0]]*connection[2]
+        for i in range(input_nodes_no, input_nodes_no+output_nodes_no, 1):
+            values[i] = math.tanh(values[i])
+        self.acceleration_pedal = (values[input_nodes_no] + 1) / 2
         self.avg_acc += self.acceleration_pedal
-        self.braking_pedal = (outputs[1] + 1) / 2
+        self.braking_pedal = (values[input_nodes_no+1] + 1) / 2
         self.avg_brk += self.braking_pedal
-        self.steering = outputs[2]
+        self.steering = values[input_nodes_no+2]
         if self.rpm > 5500:
             self.gear += 1
             self.gear = min(5, self.gear)
@@ -232,6 +255,89 @@ class Car:
                 return (i / scale / 250 - 1)**3+1
         return 1
 
-    def copy(self):
+    def add_connection(self):
+        n1 = choice([*self.nodes])
+        n2 = choice([*self.nodes])
+        l1 = self.nodes[n1]
+        l2 = self.nodes[n2]
+        if l1 > l2:
+            ns = (n2, n1)
+        elif l2 > l1:
+            ns = (n1, n2)
+        else:
+            return
+        if self.check_connection(ns):
+            self.connections.append([min(l1, l2), ns, random() * 2 - 1, True, Car.get_innovation(ns)])
+
+    def check_connection(self, ns):
+        for connection in self.connections:
+            if connection[1] == ns:
+                return False
+        return True
+
+    @staticmethod
+    def get_innovation(ns):
+        for i in range(len(Car.innovations)):
+            if Car.innovations[i] == ns:
+                return i
+        Car.innovations.append(ns)
+        return len(Car.innovations)-1
+
+    def add_node(self):
+        con = choice(self.connections)
+        while not con[3]:
+            con = choice(self.connections)
+        con[3] = False
+        for connection in self.connections:
+            if connection[1][0] == con[1][1]:
+                connection[0] += 1
+        self.max_node += 1
+        ns = (con[1][0], self.max_node)
+        self.connections.append([con[0], ns, con[2], True, Car.get_innovation(ns)])
+        self.nodes[self.max_node] = con[0]+1
+        ns = (self.max_node, con[1][1])
+        self.connections.append([con[0]+1, ns, 1, True, Car.get_innovation(ns)])
+        self.nodes[con[1][1]] += 1
+
+    def mutate(self):
+        for connection in self.connections:
+            rand = random()
+            if rand < 0.5:
+                connection[2] += gauss(0, 1) / 50
+                connection[2] = min(connection[2], 1)
+                connection[2] = max(connection[2], -1)
+            elif rand > 0.9:
+                connection[2] = random() * 2 - 1
+
+    def crossover(self, other_car):
+        nn = []
+        c1 = self.connections
+        c2 = other_car.connections
+        i = 0
+        j = 0
+        while 1:
+            nna = c1[i][4]
+            nnb = c2[j][4]
+            if nna == nnb:
+                if random() > 0.5:
+                    nn.append(c1[i])
+                else:
+                    nn.append(c2[j])
+                i += 1
+                j += 1
+            elif nna < nnb:
+                nn.append(c1[i])
+                i += 1
+            else:
+                nn.append(c2[j])
+                j += 1
+            if i == len(c1) or j == len(c2):
+                break
+        while i < len(c1):
+            nn.append(c1[i])
+            i += 1
+        while j < len(c2):
+            nn.append(c2[j])
+            j += 1
         from copy import deepcopy
-        return Car(deepcopy(self.network))
+        return Car(deepcopy(nn))

@@ -1,21 +1,19 @@
-import math
-
 import pyglet
 from pyglet.window import key
 from CarGraphic import CarGraphic
 import numpy as np
-from PIL import Image
 
 width = 1920
 height = 1080
-networks = np.load('grid.npy', allow_pickle=True)
-bs = 0.
-nn = []
-for network in networks:
-    if network[8] > bs:
-        bs = network[8]
-        nn = network[0]
-player = CarGraphic(width, height, nn)
+#networks = np.load('grid.npy', allow_pickle=True)
+#bs = 0.
+#nn = []
+#for network in networks:
+#    if network[8] > bs:
+#        bs = network[8]
+#        nn = network[0]
+#player = CarGraphic(width, height, nn)
+player = CarGraphic(width, height, np.load('error.npy', allow_pickle=True))
 
 right = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
@@ -51,13 +49,14 @@ if __name__ == '__main__':
 
     def update(dt):
         if player.alive_counter % 5 == 0:
-            pass
-            #player.think()
+            #pass
+            player.think()
         player.update_car()
         track.x = 960-player.pos_x
         track.y = 540-player.pos_y
         right.text = str(round(player.velocity_local_x, 2))
-        gear.text = str(player.gear)
+        #gear.text = str(player.death_counter)
+        gear.text = str(type(player.distance))
         rpm.text = str(round(player.rpm, 2))
 
     @window.event
