@@ -13,10 +13,9 @@ avg_sp = 8
 lateral = 6
 fc_c = 16
 best_car = Car()
-population_size = 100
-process_count = 4
+population_size = 800
+process_count = 3
 car_grid = np.zeros((acc_pedal, brk_pedal, avg_sp, lateral, fc_c), dtype=Car)
-lock = Lock()
 
 
 def mutate(grid):
@@ -78,24 +77,24 @@ def to_grid(car):
         fc = 0
     else:
         fc = min(int(math.tanh(car.distance / (100. - car.fuel) / 1000) * fc_c), fc_c - 1)
-    lock.acquire()
     grid_car = car_grid[acc, brk, speed, lat, fc]
     if grid_car == 0 or car.score > grid_car.score:
         car_grid[acc, brk, speed, lat, fc] = car
         if car.score > best_car.score:
             best_car = car
         improv += 1
-    lock.release()
 
 
-def thread_function():
+def thread_function(in_q, out_q):
     while 1:
-        car = q.get()
+        car = in_q.get()
+        if car is None:
+            break
         while car.alive:
             car.think()
             for j in range(physics_engine):
                 car.update_car(0.01)
-        to_grid(car)
+        out_q.put(car)
 
 
 if __name__ == '__main__':
@@ -103,10 +102,11 @@ if __name__ == '__main__':
     improv = 0
     cars = []
     networks = []
+    in_q = Queue()
+    out_q = Queue()
     processes = []
-    q = Queue()
-    for i in range(process_count):
-        x = Process(target=thread_function)
+    for _ in range(process_count):
+        x = Process(target=thread_function, args=(in_q, out_q))
         x.start()
         processes.append(x)
     try:
@@ -127,14 +127,12 @@ if __name__ == '__main__':
     while 1:
         car_counter = 0
         improv = 0
-
-        cars = []
-        for i in range(population_size):
-            c = mutate(networks)
-            q.put(c)
-            cars.append(c)
+        for _ in range(population_size):
+            in_q.put(mutate(networks))
         print("Mutation finished", end=' ')
-
+        for _ in range(population_size):
+            car = out_q.get()
+            to_grid(car)
         networks = []
         filled = 0
         for p in car_grid.ravel():
@@ -145,5 +143,7 @@ if __name__ == '__main__':
               acc_pedal * brk_pedal * avg_sp * lateral * fc_c, 'Improved:', improv)
         np.save('grid.npy', np.asarray(networks), allow_pickle=True)
         gen += 1
-        if gen > 100:
+        if gen > 200:
+            for _ in range(process_count):
+                in_q.put(None)
             break

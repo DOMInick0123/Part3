@@ -231,3 +231,7 @@ class Car:
             if track[int(self.pos_y - i * sin)][int(self.pos_x + i * cos)] > 20:
                 return (i / scale / 250 - 1)**3+1
         return 1
+
+    def copy(self):
+        from copy import deepcopy
+        return Car(deepcopy(self.network))
