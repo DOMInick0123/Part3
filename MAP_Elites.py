@@ -1,9 +1,9 @@
 import math
-import threading
-import time
+from multiprocessing import Process, Queue, Lock
 import numpy as np
 from random import choice, random, gauss
 from Car import Car
+import time
 
 # constants
 physics_engine = 5
@@ -13,11 +13,10 @@ avg_sp = 8
 lateral = 6
 fc_c = 16
 best_car = Car()
-population_size = 800
-thread_count = 80
-car_counter = 0
-lock = threading.Lock()
+population_size = 100
+process_count = 4
 car_grid = np.zeros((acc_pedal, brk_pedal, avg_sp, lateral, fc_c), dtype=Car)
+lock = Lock()
 
 
 def mutate(grid):
@@ -79,28 +78,24 @@ def to_grid(car):
         fc = 0
     else:
         fc = min(int(math.tanh(car.distance / (100. - car.fuel) / 1000) * fc_c), fc_c - 1)
+    lock.acquire()
     grid_car = car_grid[acc, brk, speed, lat, fc]
     if grid_car == 0 or car.score > grid_car.score:
         car_grid[acc, brk, speed, lat, fc] = car
         if car.score > best_car.score:
             best_car = car
         improv += 1
+    lock.release()
 
 
 def thread_function():
     while 1:
-        global car_counter
-        lock.acquire()
-        if car_counter == population_size:
-            lock.release()
-            break
-        thread_player = cars[car_counter]
-        car_counter += 1
-        lock.release()
-        while thread_player.alive:
-            thread_player.think()
+        car = q.get()
+        while car.alive:
+            car.think()
             for j in range(physics_engine):
-                thread_player.update_car(0.01)
+                car.update_car(0.01)
+        to_grid(car)
 
 
 if __name__ == '__main__':
@@ -108,6 +103,12 @@ if __name__ == '__main__':
     improv = 0
     cars = []
     networks = []
+    processes = []
+    q = Queue()
+    for i in range(process_count):
+        x = Process(target=thread_function)
+        x.start()
+        processes.append(x)
     try:
         networks = np.load('grid.npy', allow_pickle=True)
     except IOError:
@@ -126,31 +127,14 @@ if __name__ == '__main__':
     while 1:
         car_counter = 0
         improv = 0
+
         cars = []
-        for i in range(population_size//(2*gen)):
-            cars.append(Car())
-        while len(cars) < population_size:
-            cars.append(mutate(networks))
+        for i in range(population_size):
+            c = mutate(networks)
+            q.put(c)
+            cars.append(c)
         print("Mutation finished", end=' ')
-        threads = []
-        for i in range(thread_count):
-            x = threading.Thread(target=thread_function)
-            x.start()
-            threads.append(x)
-        cou = 0
-        while len(threads) > 0:
-            for thread in threads:
-                if not thread.is_alive():
-                    threads.remove(thread)
-            time.sleep(10)
-            cou += 1
-            if cou > 60:
-                for p in cars:
-                    if p.alive:
-                        np.save('error.npy', np.asarray(p.network), allow_pickle=True)
-                        exit(1)
-        for player in cars:
-            to_grid(player)
+
         networks = []
         filled = 0
         for p in car_grid.ravel():

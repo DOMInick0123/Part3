@@ -1,4 +1,4 @@
-from random import random, gauss, choice
+from random import random
 import math
 import numpy as np
 from PIL import Image
