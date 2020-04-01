@@ -5,15 +5,15 @@ import numpy as np
 
 width = 1920
 height = 1080
-#networks = np.load('grid.npy', allow_pickle=True)
-#bs = 0.
-#nn = []
-#for network in networks:
-#    if network[8] > bs:
-#        bs = network[8]
-#        nn = network[0]
-#player = CarGraphic(width, height, nn)
-player = CarGraphic(width, height, np.load('error.npy', allow_pickle=True))
+networks = np.load('grid.npy', allow_pickle=True)
+bs = 0.
+nn = []
+for network in networks:
+    if network[8] > bs:
+        bs = network[8]
+        nn = network[0]
+player = CarGraphic(width, height, nn)
+#player = CarGraphic(width, height, np.load('error.npy', allow_pickle=True))
 
 right = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
