@@ -9,9 +9,10 @@ networks = np.load('grid.npy', allow_pickle=True)
 bs = 0.
 nn = []
 for network in networks:
-    if network[8] > bs:
-        bs = network[8]
+    if network[7] > bs:
+        bs = network[7]
         nn = network[0]
+print(bs)
 player = CarGraphic(width, height, nn)
 #player = CarGraphic(width, height, np.load('error.npy', allow_pickle=True))
 
@@ -30,8 +31,12 @@ rpm = pyglet.text.Label('Hello, world',
                          font_size=20,
                          x=50, y=300,
                          anchor_x='center', anchor_y='center', color=(0, 255, 255, 255))
-track = pyglet.sprite.Sprite(pyglet.image.load('test_track.jpg'))
+#track = pyglet.sprite.Sprite(pyglet.image.load('test_track.jpg'))
 #track = pyglet.sprite.Sprite(pyglet.image.load('track_graphics.jpg'))
+#track = pyglet.sprite.Sprite(pyglet.image.load('monza.jpg'))
+track = pyglet.sprite.Sprite(pyglet.image.load('testtrack.jpg'))
+scale = 2.5
+track.scale = scale
 
 if __name__ == '__main__':
     window = pyglet.window.Window(width=width, height=height, caption="Car")
@@ -48,16 +53,14 @@ if __name__ == '__main__':
 
 
     def update(dt):
-        if player.alive_counter % 5 == 0:
-            #pass
-            player.think()
-        player.update_car()
-        track.x = 960-player.pos_x
-        track.y = 540-player.pos_y
-        right.text = str(round(player.velocity_local_x, 2))
-        #gear.text = str(player.death_counter)
-        gear.text = str(type(player.distance))
-        rpm.text = str(round(player.rpm, 2))
+        player.think()
+        for _ in range(5):
+            player.update_car()
+        track.x = 960-(player.pos_x * scale)
+        track.y = 540-(player.pos_y * scale)
+        right.text = str(round(player.velocity_local_x*3.6, 2))
+        gear.text = str(player.alive_counter)
+        rpm.text = str(round(dt, 4))
 
     @window.event
     def on_key_press(symbol, modifiers):
@@ -88,5 +91,5 @@ if __name__ == '__main__':
             player.steering = 0
 
 
-    pyglet.clock.schedule_interval(update, 0.01)
+    pyglet.clock.schedule_interval(update, 0.05)
     pyglet.app.run()

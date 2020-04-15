@@ -1,45 +1,43 @@
 import math
-from multiprocessing import Process, Queue, Lock
+from multiprocessing import Process, Queue
 import numpy as np
 from random import choice, random, gauss
 from Car import Car
-import time
 
 # constants
 physics_engine = 5
-acc_pedal = 16
-brk_pedal = 8
-avg_sp = 8
+acc_pedal = 6
+brk_pedal = 6
 lateral = 6
-fc_c = 16
+fc_c = 6
+avg_dis = 6
 best_car = Car()
-population_size = 800
-process_count = 3
-car_grid = np.zeros((acc_pedal, brk_pedal, avg_sp, lateral, fc_c), dtype=Car)
+population_size = 1024
+process_count = 4
+car_grid = np.zeros((acc_pedal, brk_pedal, lateral, fc_c, avg_dis), dtype=Car)
 
 
 def mutate(grid):
     if len(grid) == 0:
         return Car()
-    c = choice(grid)
-    while c[7] > best_car.score/10:
-        c = choice(grid)
     from copy import deepcopy
-    car1 = deepcopy(c[0])
+    car1 = deepcopy(choice(grid)[0])
     car2 = deepcopy(choice(grid)[0])
     nn = []
+    #r = 0.99
+    r = 0.909+gen*0.00009
     for i in range(len(car1)):
         weights = []
         bias = []
         for j in range(len(car1[i][0])):
             row = []
             for k in range(len(car1[i][0][j])):
-                if random() < 0.9:
+                if random() < r:
                     row.append(car1[i][0][j][k])
                 else:
                     row.append(car2[i][0][j][k])
             weights.append(row)
-            if random() < 0.9:
+            if random() < r:
                 bias.append(car1[i][1][j])
             else:
                 bias.append(car2[i][1][j])
@@ -47,20 +45,10 @@ def mutate(grid):
     for layer in nn:
         for i in range(len(layer[0])):
             for j in range(len(layer[0][i])):
-                rand = random()
-                if rand < 0.1:
-                    layer[0][i][j] += gauss(0, 1) / 50
-                    layer[0][i][j] = min(layer[0][i][j], 1)
-                    layer[0][i][j] = max(layer[0][i][j], -1)
-                elif rand > 0.99:
+                if random() > r:
                     layer[0][i][j] = random() * 2 - 1
         for i in range(len(layer[1])):
-            rand = random()
-            if rand < 0.1:
-                layer[1][i] += gauss(0, 1) / 50
-                layer[1][i] = min(layer[1][i], 1)
-                layer[1][i] = max(layer[1][i], -1)
-            elif rand > 0.99:
+            if random() > r:
                 layer[1][i] = random() * 2 - 1
     return Car(nn)
 
@@ -71,15 +59,15 @@ def to_grid(car):
         acc_pedal / 2 * (math.tanh(8 * (car.avg_acc / car.alive_counter * physics_engine - 0.8)) + 1))
     brk = int(
         brk_pedal / 2 * (math.tanh(8 * (car.avg_brk / car.alive_counter * physics_engine - 0.15)) + 1))
-    speed = min(int(math.tanh(car.distance/car.alive_counter*2) * avg_sp), lateral - 1)
     lat = min(int(car.max_lateral / 20000 * lateral), lateral - 1)
     if car.fuel == 100.:
         fc = 0
     else:
-        fc = min(int(math.tanh(car.distance / (100. - car.fuel) / 1000) * fc_c), fc_c - 1)
-    grid_car = car_grid[acc, brk, speed, lat, fc]
+        fc = min(int(math.tanh(car.distance / (100. - car.fuel) / 3000) * fc_c), fc_c - 1)
+    mid = min(avg_dis - 1, max(0, int((math.tanh(car.mid/car.alive_counter*25) + 0.5)*avg_dis)))
+    grid_car = car_grid[acc, brk, lat, fc, mid]
     if grid_car == 0 or car.score > grid_car.score:
-        car_grid[acc, brk, speed, lat, fc] = car
+        car_grid[acc, brk, lat, fc, mid] = car
         if car.score > best_car.score:
             best_car = car
         improv += 1
@@ -123,27 +111,30 @@ if __name__ == '__main__':
             p.distance = network[5]
             p.fuel = network[6]
             p.score = network[7]
+            p.mid = network[8]
             to_grid(p)
     while 1:
         car_counter = 0
         improv = 0
         for _ in range(population_size):
             in_q.put(mutate(networks))
-        print("Mutation finished", end=' ')
         for _ in range(population_size):
             car = out_q.get()
             to_grid(car)
         networks = []
         filled = 0
+        avg_score = 0
         for p in car_grid.ravel():
             if not p == 0:
-                networks.append((p.network, p.alive_counter, p.avg_acc, p.avg_brk, p.max_lateral, p.distance, p.fuel, p.score))
+                networks.append((p.network, p.alive_counter, p.avg_acc, p.avg_brk, p.max_lateral, p.distance, p.fuel, p.score, p.mid))
                 filled += 1
+
+                avg_score += p.score
         print("Gen:", gen, "Best score:", best_car.score, 'Filled spaces in grid:', filled, '/',
-              acc_pedal * brk_pedal * avg_sp * lateral * fc_c, 'Improved:', improv)
+              acc_pedal * brk_pedal * lateral * fc_c * avg_dis, 'Improved:', improv, 'Average score:', avg_score/filled)
         np.save('grid.npy', np.asarray(networks), allow_pickle=True)
         gen += 1
-        if gen > 200:
+        if gen > 1000:
             for _ in range(process_count):
                 in_q.put(None)
             break

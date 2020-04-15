@@ -25,7 +25,8 @@ braking_constant = 13000.
 gear_ratios = [2.66, 1.78, 1.3, 1., 0.74, 0.5]
 differential_ratio = 3.42
 g = 9.81
-scale = 5.
+greyscale = 100
+scale = 2
 
 # precalculated values
 h_L = h / wheelbase
@@ -40,7 +41,10 @@ c_rpm = 8596/29
 
 transmission_efficiency = 0.8
 rad_to_rpm = 30 / (math.pi * wheel_radius)
-track = np.array(Image.open('test_track.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+#track = np.array(Image.open('test_track.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+#track = np.array(Image.open('track_graphics.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+#track = np.array(Image.open('monza.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+track = np.array(Image.open('testtrack.jpg').transpose(Image.FLIP_TOP_BOTTOM))
 
 
 def rpm_to_torque(rpm):
@@ -48,13 +52,11 @@ def rpm_to_torque(rpm):
 
 
 class Car:
-    anch_x = int((rear_wing + c) * scale)
-    anch_y = int(width * scale / 2)
 
     def __init__(self, network=None):
-        self.pos_x = 800.
-        self.pos_y = 450.
-        self.rot_rad = math.radians(0)
+        self.pos_x = 330.
+        self.pos_y = 370.
+        self.rot_rad = math.radians(30)
         self.sin_rotation = math.sin(self.rot_rad)
         self.cos_rotation = math.cos(self.rot_rad)
         self.steering = 0.
@@ -74,11 +76,11 @@ class Car:
         self.distance = 0.
         self.alive_counter = 0
         self.alive = True
-        self.death_counter = 0
         self.avg_acc = 0.
         self.avg_brk = 0.
         self.avg_fc = 0.
         self.max_lateral = 0.
+        self.mid = 0.
         if network is None:
             self.network = []
             layers = (8, 6, 3)
@@ -110,14 +112,26 @@ class Car:
                 self.wheel_position = min(self.wheel_position + dt * 1.0, 0)
 
         # collision detection
-        front_x = self.pos_x + self.cos_rotation * front_cg
-        front_y = self.pos_y - self.sin_rotation * front_cg
-        left_x = front_x + self.sin_rotation * side_cg
-        left_y = front_y + self.cos_rotation * side_cg
-        right_x = front_x - self.sin_rotation * side_cg
-        right_y = front_y - self.cos_rotation * side_cg
-        if track[int(left_y)][int(left_x)] > 20 or track[int(right_y)][int(right_x)] > 20:
-            self.score = self.distance * 0.01 - 0.0001 * self.alive_counter
+        fx = self.cos_rotation * front_cg
+        fy = self.sin_rotation * front_cg
+        front_x = self.pos_x + fx
+        front_y = self.pos_y - fy
+        back_x = self.pos_x - fx
+        back_y = self.pos_y + fy
+        side_x = self.sin_rotation * side_cg
+        side_y = self.cos_rotation * side_cg
+        left_front_x = front_x + side_x
+        left_front_y = front_y + side_y
+        right_front_x = front_x - side_x
+        right_front_y = front_y - side_y
+        left_rear_x = back_x + side_x
+        left_rear_y = back_y + side_y
+        right_rear_x = back_x - side_x
+        right_rear_y = back_y - side_y
+        if track[int(left_front_y)][int(left_front_x)] > greyscale or track[int(right_front_y)][int(right_front_x)] > greyscale or \
+                track[int(left_rear_y)][int(left_rear_x)] > greyscale or track[int(right_rear_y)][int(right_rear_x)] > greyscale:
+            self.score = self.distance - 0.05 * self.alive_counter
+            self.score *= 0.95
             self.alive = False
             return
 
@@ -139,7 +153,7 @@ class Car:
         alpha_front = math.atan2(self.velocity_local_y + yaw_speed_front, abs(self.velocity_local_x)) - np.sign(
             self.velocity_local_x) * steering_angle
         alpha_rear = math.atan2(self.velocity_local_y - yaw_speed_rear, abs(self.velocity_local_x))
-        tg = tyre_grip + self.velocity_local_x / 10.  # downforce
+        tg = tyre_grip + self.velocity_local_x / 8.  # downforce
         force_lateral_front = min(max(ca_f * alpha_front, -tg), tg) * weight_front
         force_lateral_rear = min(max(ca_f * alpha_rear, -tg), tg) * weight_rear
         force_lat = force_lateral_front * math.cos(steering_angle) + force_lateral_rear
@@ -167,20 +181,8 @@ class Car:
 
         speed = (self.velocity_x ** 2 + self.velocity_y ** 2) ** 0.5
         self.distance += dt*speed
-        if self.distance > 10000:
-            self.score = self.distance * 0.01 - 0.0001 * self.alive_counter
-            self.alive = False
-            return
-        if speed < 0.5 and self.acceleration_pedal == 0:
-            self.velocity_x = 0
-            self.velocity_y = 0
-            angular_torque = 0
-            self.velocity_angular = 0
-            self.death_counter += 1
-        elif speed < 10:
-            self.death_counter += 1
-        if self.death_counter >= 500:
-            self.score = self.distance * 0.01 - 0.0001 * self.alive_counter
+        if self.alive_counter >= 32000 or (speed < 8 and self.alive_counter > 600) or (speed < 0.5 and self.acceleration_pedal == 0):
+            self.score = self.distance - 0.05 * self.alive_counter
             self.alive = False
             return
 
@@ -200,11 +202,12 @@ class Car:
         sin_30 = math.sin(self.rot_rad + math.radians(30))
         cos_60 = math.cos(self.rot_rad + math.radians(60))
         sin_60 = math.sin(self.rot_rad + math.radians(60))
-        sensor_m60 = self.sensor(-cos_30, sin_30)
-        sensor_60 = self.sensor(sin_60, cos_60)
-        inputs = [self.velocity_local_x / 65.234, self.velocity_local_y / 30., self.velocity_angular, sensor_m60,
-                  self.sensor(-cos_60, sin_60),
-                  self.sensor(self.sin_rotation, self.cos_rotation), self.sensor(sin_30, cos_30), sensor_60]
+        left = self.sensor(-cos_30, sin_30, 30)
+        right = self.sensor(sin_60, cos_60, 30)
+        self.mid += right-left
+        inputs = [self.velocity_local_x / 65.234, self.velocity_local_y / 30., self.velocity_angular, left,
+                  self.sensor(-cos_60, sin_60, 120),
+                  self.sensor(self.sin_rotation, self.cos_rotation, 250), self.sensor(sin_30, cos_30, 120), right]
         outputs = []
         for layer in self.network:
             outputs.clear()
@@ -226,10 +229,10 @@ class Car:
             self.gear -= 1
             self.gear = max(0, self.gear)
 
-    def sensor(self, sin, cos):
-        for i in range(0, int(250 * scale), int(scale)):
-            if track[int(self.pos_y - i * sin)][int(self.pos_x + i * cos)] > 20:
-                return (i / scale / 250 - 1)**3+1
+    def sensor(self, sin, cos, ran):
+        for i in np.arange(0, ran, 0.5):
+            if track[int(self.pos_y - i * sin*scale)][int(self.pos_x + i * cos*scale)] > greyscale:
+                return i / ran
         return 1
 
     def copy(self):
