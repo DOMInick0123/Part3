@@ -15,6 +15,7 @@ fc_c = 6
 avg_dis = 6
 car_grid = np.zeros((acc_pedal, brk_pedal, lateral, fc_c, avg_dis), dtype=Car)
 
+
 def to_grid(car):
     acc = int(
         acc_pedal / 2 * (math.tanh(8 * (car.avg_acc / car.alive_counter * physics_engine - 0.8)) + 1))

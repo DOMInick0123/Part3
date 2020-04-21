@@ -14,7 +14,7 @@ for network in networks:
         nn = network[0]
 print(bs)
 player = CarGraphic(width, height, nn)
-#player = CarGraphic(width, height, np.load('error.npy', allow_pickle=True))
+#player = CarGraphic(width, height)
 
 right = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',

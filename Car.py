@@ -21,7 +21,7 @@ rr = 30 * drag  # constant for rolling resistance
 ca_r = -5.2  # cornering stiffness for rear wheels
 ca_f = -5.  # cornering stiffness for front wheels
 tyre_grip = 2.5  # diameter of friction circle
-braking_constant = 13000.
+braking_constant = 20000.
 gear_ratios = [2.66, 1.78, 1.3, 1., 0.74, 0.5]
 differential_ratio = 3.42
 g = 9.81
@@ -54,9 +54,9 @@ def rpm_to_torque(rpm):
 class Car:
 
     def __init__(self, network=None):
-        self.pos_x = 330.
-        self.pos_y = 370.
-        self.rot_rad = math.radians(30)
+        self.pos_x = 1055.
+        self.pos_y = 300.
+        self.rot_rad = math.radians(-20)
         self.sin_rotation = math.sin(self.rot_rad)
         self.cos_rotation = math.cos(self.rot_rad)
         self.steering = 0.
@@ -181,7 +181,7 @@ class Car:
 
         speed = (self.velocity_x ** 2 + self.velocity_y ** 2) ** 0.5
         self.distance += dt*speed
-        if self.alive_counter >= 32000 or (speed < 8 and self.alive_counter > 600) or (speed < 0.5 and self.acceleration_pedal == 0):
+        if self.alive_counter >= 14000 or (speed < 8 and self.alive_counter > 300) or (speed < 0.5 and self.acceleration_pedal == 0):
             self.score = self.distance - 0.05 * self.alive_counter
             self.alive = False
             return
@@ -207,7 +207,7 @@ class Car:
         self.mid += right-left
         inputs = [self.velocity_local_x / 65.234, self.velocity_local_y / 30., self.velocity_angular, left,
                   self.sensor(-cos_60, sin_60, 120),
-                  self.sensor(self.sin_rotation, self.cos_rotation, 250), self.sensor(sin_30, cos_30, 120), right]
+                  self.sensor(self.sin_rotation, self.cos_rotation, 200), self.sensor(sin_30, cos_30, 120), right]
         outputs = []
         for layer in self.network:
             outputs.clear()
