@@ -34,9 +34,7 @@ def to_grid(car):
         car_grid[acc, brk, lat, fc, mid] = car
 
 
-if __name__ == '__main__':
-    max_mid = -100
-    min_mid = 100
+def check_grid():
     try:
         networks = np.load('grid.npy', allow_pickle=True)
     except IOError:
@@ -52,10 +50,6 @@ if __name__ == '__main__':
             p.fuel = network[6]
             p.score = network[7]
             p.mid = network[8]
-            if p.mid > max_mid:
-                max_mid = p.mid
-            if p.mid < min_mid:
-                min_mid = p.mid
             to_grid(p)
     ap = np.zeros((acc_pedal,))
     bp = np.zeros((brk_pedal,))
@@ -68,7 +62,7 @@ if __name__ == '__main__':
             for l in range(lateral):
                 for m in range(fc_c):
                     for k in range(avg_dis):
-                        if not car_grid[i,j,l,m,k] == 0:
+                        if not car_grid[i, j, l, m, k] == 0:
                             ap[i] += 1
                             bp[j] += 1
                             la[l] += 1
@@ -79,4 +73,22 @@ if __name__ == '__main__':
     print(la)
     print(fc)
     print(sp)
-    print(max_mid, min_mid)
+
+
+def check_best():
+    treshold = 1340
+    better = 0
+    try:
+        networks = np.load('grid.npy', allow_pickle=True)
+    except IOError:
+        pass
+    else:
+        for network in networks:
+            if network[7] > treshold:
+                better += 1
+    print(better)
+
+
+if __name__ == '__main__':
+    #check_grid()
+    check_best()
