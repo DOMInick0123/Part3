@@ -54,9 +54,9 @@ def rpm_to_torque(rpm):
 class Car:
 
     def __init__(self, network=None):
-        self.pos_x = 1055.
-        self.pos_y = 300.
-        self.rot_rad = math.radians(-20)
+        self.pos_x = 1100.
+        self.pos_y = 320.
+        self.rot_rad = math.radians(160)
         self.sin_rotation = math.sin(self.rot_rad)
         self.cos_rotation = math.cos(self.rot_rad)
         self.steering = 0.

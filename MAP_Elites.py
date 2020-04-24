@@ -2,7 +2,8 @@ import math
 from multiprocessing import Process, Queue
 import numpy as np
 from random import choice, random, gauss
-from Car import Car
+from CarCheckpoint import Car
+from copy import deepcopy
 
 # constants
 physics_engine = 5
@@ -20,8 +21,10 @@ car_grid = np.zeros((acc_pedal, brk_pedal, lateral, fc_c, avg_dis), dtype=Car)
 def mutate(grid):
     if len(grid) == 0:
         return Car()
-    from copy import deepcopy
-    car1 = deepcopy(choice(grid)[0])
+    c = choice(grid)
+    while c[7] < best_car.score*0.9:
+        c = choice(grid)
+    car1 = deepcopy(c[0])
     car2 = deepcopy(choice(grid)[0])
     nn = []
     r = 0.992
@@ -58,22 +61,23 @@ def mutate(grid):
 
 def to_grid(car):
     global best_car, improv
-    acc = int(
-        acc_pedal / 2 * (math.tanh(8 * (car.avg_acc / car.alive_counter * physics_engine - 0.8)) + 1))
-    brk = int(
-        brk_pedal / 2 * (math.tanh(8 * (car.avg_brk / car.alive_counter * physics_engine - 0.15)) + 1))
-    lat = min(int(car.max_lateral / 20000 * lateral), lateral - 1)
-    if car.fuel == 100.:
-        fc = 0
-    else:
-        fc = min(int(math.tanh(car.distance / (100. - car.fuel) / 3000) * fc_c), fc_c - 1)
-    mid = min(avg_dis - 1, max(0, int((math.tanh(car.mid/car.alive_counter*25) + 0.5)*avg_dis)))
-    grid_car = car_grid[acc, brk, lat, fc, mid]
-    if grid_car == 0 or car.score > grid_car.score:
-        car_grid[acc, brk, lat, fc, mid] = car
-        if car.score > best_car.score:
-            best_car = car
-        improv += 1
+    if car.score > 0:
+        acc = int(
+            acc_pedal / 2 * (math.tanh(8 * (car.avg_acc / car.alive_counter * physics_engine - 0.8)) + 1))
+        brk = int(
+            brk_pedal / 2 * (math.tanh(8 * (car.avg_brk / car.alive_counter * physics_engine - 0.15)) + 1))
+        lat = min(int(car.max_lateral / 20000 * lateral), lateral - 1)
+        if car.fuel == 100.:
+            fc = 0
+        else:
+            fc = min(int(math.tanh(car.distance / (100. - car.fuel) / 3000) * fc_c), fc_c - 1)
+        mid = min(avg_dis - 1, max(0, int((math.tanh(car.mid/car.alive_counter*25) + 0.5)*avg_dis)))
+        grid_car = car_grid[acc, brk, lat, fc, mid]
+        if grid_car == 0 or car.score > grid_car.score:
+            car_grid[acc, brk, lat, fc, mid] = car
+            if car.score > best_car.score:
+                best_car = car
+            improv += 1
 
 
 def thread_function(in_q, out_q):
@@ -143,7 +147,7 @@ if __name__ == '__main__':
         np.save('grid.npy', np.asarray(networks), allow_pickle=True)
         np.save('progress.npy', np.asarray(progress), allow_pickle=True)
         gen += 1
-        if gen > 4000:
+        if gen > 6000:
             for _ in range(process_count):
                 in_q.put(None)
             break

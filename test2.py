@@ -76,7 +76,7 @@ def check_grid():
 
 
 def check_best():
-    treshold = 1340
+    treshold = 80
     better = 0
     try:
         networks = np.load('grid.npy', allow_pickle=True)

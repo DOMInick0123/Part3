@@ -45,7 +45,10 @@ rad_to_rpm = 30 / (math.pi * wheel_radius)
 #track = np.array(Image.open('track_graphics.jpg').transpose(Image.FLIP_TOP_BOTTOM))
 #track = np.array(Image.open('monza.jpg').transpose(Image.FLIP_TOP_BOTTOM))
 track = np.array(Image.open('testtrack.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-checkpoints = ((1763, 991), (1818, 1018), (1865, 1057), (1980, 996), (2157, 901), (2266, 676), (2181, 514), (1995, 510), (1822, 535), (1738, 491), (723, 267), (579, 317), (357, 656), (324, 756), (287, 942), (502, 1070), (662, 1069), (810, 1034), (1060, 1061), (1218, 1035), (1435, 1041))
+checkpoints_flipped = ((1165, 1004), (1218, 1035), (1435, 1041), (1763, 991), (1818, 1018), (1865, 1057), (1980, 996), (2157, 901), (2266, 676), (2181, 514), (1995, 510), (1822, 535), (1738, 491), (723, 267), (579, 317), (357, 656), (324, 756), (287, 942), (502, 1070), (662, 1069), (810, 1034), (987, 1083))
+checkpoints = []
+for i in range(len(checkpoints_flipped)):
+    checkpoints.append((checkpoints_flipped[-1-i][0], 1360-checkpoints_flipped[-1-i][1]))
 
 
 def rpm_to_torque(rpm):
@@ -55,9 +58,9 @@ def rpm_to_torque(rpm):
 class Car:
 
     def __init__(self, network=None):
-        self.pos_x = 1055.
-        self.pos_y = 300.
-        self.rot_rad = math.radians(-20)
+        self.pos_x = 1100.
+        self.pos_y = 320.
+        self.rot_rad = math.radians(160)
         self.sin_rotation = math.sin(self.rot_rad)
         self.cos_rotation = math.cos(self.rot_rad)
         self.steering = 0.
@@ -83,6 +86,7 @@ class Car:
         self.avg_fc = 0.
         self.max_lateral = 0.
         self.mid = 0.
+        self.dis_last_check = 0.
         if network is None:
             self.network = []
             layers = (8, 6, 3)
@@ -132,13 +136,15 @@ class Car:
         right_rear_y = back_y - side_y
         if track[int(left_front_y)][int(left_front_x)] > greyscale or track[int(right_front_y)][int(right_front_x)] > greyscale or \
                 track[int(left_rear_y)][int(left_rear_x)] > greyscale or track[int(right_rear_y)][int(right_rear_x)] > greyscale:
-            self.score = self.checkpoint - 0.001 * self.alive_counter
-            self.score *= 0.5
+            self.score += (self.distance-self.dis_last_check)*0.01
+            self.score *= 0.7
             self.alive = False
             return
         check_x, check_y = checkpoints[self.checkpoint]
         if (self.pos_x-check_x)**2+(self.pos_y-check_y)**2 < 100:
             self.checkpoint += 1
+            self.score = 5*self.checkpoint - 0.001 * self.alive_counter
+            self.dis_last_check = self.distance
 
         # transforming velocity from global to local coordinates
         self.velocity_local_x = self.cos_rotation * self.velocity_x - self.sin_rotation * self.velocity_y
@@ -187,7 +193,7 @@ class Car:
         speed = (self.velocity_x ** 2 + self.velocity_y ** 2) ** 0.5
         self.distance += dt*speed
         if self.alive_counter >= 14000 or (speed < 8 and self.alive_counter > 300) or (speed < 0.5 and self.acceleration_pedal == 0) or self.checkpoint == len(checkpoints):
-            self.score = self.checkpoint - 0.001 * self.alive_counter
+            self.score += (self.distance - self.dis_last_check) * 0.01
             self.alive = False
             return
 
