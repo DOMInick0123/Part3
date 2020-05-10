@@ -41,10 +41,13 @@ c_rpm = 8596/29
 
 transmission_efficiency = 0.8
 rad_to_rpm = 30 / (math.pi * wheel_radius)
-#track = np.array(Image.open('test_track.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-#track = np.array(Image.open('track_graphics.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-#track = np.array(Image.open('monza.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-track = np.array(Image.open('testtrack.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+#track = np.array(Image.open('testtrack.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+track = np.array(Image.open('yasmarina.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+#checkpoints = ((987, 277), (810, 326), (662, 291), (502, 290), (287, 418), (324, 604), (357, 704), (579, 1043), (723, 1093), (1738, 869), (1822, 825), (1995, 850), (2181, 846), (2266, 684), (2157, 459), (1980, 364), (1865, 303), (1818, 342), (1763, 369), (1435, 319), (1218, 325), (1165, 356))
+checkpoints = (
+        (1571, 1439), (1789, 1909), (1941, 2306), (2293, 2561), (2449, 2805), (2544, 2892), (2667, 2991), (2581, 3005), (404, 2096),
+        (394, 1971), (229, 1130), (470, 250), (559, 242), (630, 248), (762, 480), (379, 960), (441, 1208),
+        (601, 1231), (794, 1219), (708, 1539), (567, 1939), (1031, 1818))
 
 
 def rpm_to_torque(rpm):
@@ -55,12 +58,14 @@ class Car:
 
     def __init__(self, network=None):
         self.pos_x = 1100.
+        self.pos_x = 1031.
         self.pos_y = 320.
+        self.pos_y = 1818.
         self.rot_rad = math.radians(160)
+        self.rot_rad = math.radians(45)
         self.sin_rotation = math.sin(self.rot_rad)
         self.cos_rotation = math.cos(self.rot_rad)
         self.steering = 0.
-        self.wheel_position = 0.
         self.acceleration_pedal = 0.
         self.braking_pedal = 0.
         self.gear = 0
@@ -74,6 +79,7 @@ class Car:
         self.fuel = 100.
         self.score = 0.
         self.distance = 0.
+        self.checkpoint = 0
         self.alive_counter = 0
         self.alive = True
         self.avg_acc = 0.
@@ -81,6 +87,7 @@ class Car:
         self.avg_fc = 0.
         self.max_lateral = 0.
         self.mid = 0.
+        self.dis_last_check = 0.
         if network is None:
             self.network = []
             layers = (8, 6, 3)
@@ -103,14 +110,6 @@ class Car:
         else:
             return
 
-        if abs(self.steering) > 0.001:
-            self.wheel_position = min(max(self.wheel_position + self.steering * dt * 2.0, -1.0), 1.0)
-        else:
-            if self.wheel_position > 0:
-                self.wheel_position = max(self.wheel_position - dt * 1.0, 0)
-            elif self.wheel_position < 0:
-                self.wheel_position = min(self.wheel_position + dt * 1.0, 0)
-
         # collision detection
         fx = self.cos_rotation * front_cg
         fy = self.sin_rotation * front_cg
@@ -130,10 +129,15 @@ class Car:
         right_rear_y = back_y - side_y
         if track[int(left_front_y)][int(left_front_x)] > greyscale or track[int(right_front_y)][int(right_front_x)] > greyscale or \
                 track[int(left_rear_y)][int(left_rear_x)] > greyscale or track[int(right_rear_y)][int(right_rear_x)] > greyscale:
-            self.score = self.distance - 0.05 * self.alive_counter
-            self.score *= 0.95
+            self.score += (self.distance-self.dis_last_check)*0.01
+            self.score *= 0.7
             self.alive = False
             return
+        check_x, check_y = checkpoints[self.checkpoint]
+        if (self.pos_x-check_x)**2+(self.pos_y-check_y)**2 < 160:
+            self.checkpoint += 1
+            self.score = 5*self.checkpoint - 0.001 * self.alive_counter
+            self.dis_last_check = self.distance
 
         # transforming velocity from global to local coordinates
         self.velocity_local_x = self.cos_rotation * self.velocity_x - self.sin_rotation * self.velocity_y
@@ -181,8 +185,8 @@ class Car:
 
         speed = (self.velocity_x ** 2 + self.velocity_y ** 2) ** 0.5
         self.distance += dt*speed
-        if self.alive_counter >= 14000 or (speed < 8 and self.alive_counter > 300) or (speed < 0.5 and self.acceleration_pedal == 0):
-            self.score = self.distance - 0.05 * self.alive_counter
+        if self.alive_counter >= 140000 or (speed < 8 and self.alive_counter > 300) or (speed < 0.5 and self.acceleration_pedal == 0) or self.checkpoint == len(checkpoints):
+            self.score += (self.distance - self.dis_last_check) * 0.01
             self.alive = False
             return
 

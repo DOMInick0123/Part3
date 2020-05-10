@@ -1,8 +1,8 @@
 import math
 from multiprocessing import Process, Queue
 import numpy as np
-from random import choice, random, gauss
-from CarCheckpoint import Car
+from random import choice, random
+from Car import Car
 from copy import deepcopy
 
 # constants
@@ -12,19 +12,14 @@ brk_pedal = 6
 lateral = 6
 fc_c = 6
 avg_dis = 6
-best_car = Car()
 population_size = 1024
 process_count = 16
-car_grid = np.zeros((acc_pedal, brk_pedal, lateral, fc_c, avg_dis), dtype=Car)
 
 
 def mutate(grid):
     if len(grid) == 0:
         return Car()
-    c = choice(grid)
-    while c[7] < best_car.score*0.9:
-        c = choice(grid)
-    car1 = deepcopy(c[0])
+    car1 = deepcopy(choice(grid)[0])
     car2 = deepcopy(choice(grid)[0])
     nn = []
     r = 0.992
@@ -48,14 +43,10 @@ def mutate(grid):
         for i in range(len(layer[0])):
             for j in range(len(layer[0][i])):
                 if random() > r:
-                    #layer[0][i][j] = random() * 2 - 1
-                    layer[0][i][j] += gauss(0, 0.05)
-                    layer[0][i][j] = max(-1, min(1, layer[0][i][j]))
+                    layer[0][i][j] = random() * 2 - 1
         for i in range(len(layer[1])):
             if random() > r:
-                #layer[1][i] = random() * 2 - 1
-                layer[1][i] += gauss(0, 0.05)
-                layer[1][i] = max(-1, min(1, layer[1][i]))
+                layer[1][i] = random() * 2 - 1
     return Car(nn)
 
 
@@ -93,7 +84,8 @@ def thread_function(in_q, out_q):
 
 
 if __name__ == '__main__':
-    gen = 1
+    best_car = Car()
+    car_grid = np.zeros((acc_pedal, brk_pedal, lateral, fc_c, avg_dis), dtype=Car)
     improv = 0
     cars = []
     networks = []
@@ -124,7 +116,7 @@ if __name__ == '__main__':
         progress = np.load('progress.npy', allow_pickle=True).tolist()
     except IOError:
         progress = []
-    while 1:
+    for gen in range(15000):
         car_counter = 0
         improv = 0
         for _ in range(population_size):
@@ -139,15 +131,11 @@ if __name__ == '__main__':
             if not p == 0:
                 networks.append((p.network, p.alive_counter, p.avg_acc, p.avg_brk, p.max_lateral, p.distance, p.fuel, p.score, p.mid))
                 filled += 1
-
                 avg_score += p.score
         print("Gen:", gen, "Best score:", best_car.score, 'Filled spaces in grid:', filled, '/',
               acc_pedal * brk_pedal * lateral * fc_c * avg_dis, 'Improved:', improv, 'Average score:', avg_score/filled)
         progress.append([best_car.score, filled, avg_score/filled])
         np.save('grid.npy', np.asarray(networks), allow_pickle=True)
         np.save('progress.npy', np.asarray(progress), allow_pickle=True)
-        gen += 1
-        if gen > 6000:
-            for _ in range(process_count):
-                in_q.put(None)
-            break
+    for _ in range(process_count):
+        in_q.put(None)

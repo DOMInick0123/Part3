@@ -5,7 +5,7 @@ import numpy as np
 
 width = 1920
 height = 1080
-networks = np.load('grid.npy', allow_pickle=True)
+networks = np.load('run2/grid.npy', allow_pickle=True)
 bs = 0.
 nn = []
 for network in networks:
@@ -13,8 +13,9 @@ for network in networks:
         bs = network[7]
         nn = network[0]
 print(bs)
+nn = np.load('individuals.npy', allow_pickle=True)[1622]
 player = CarGraphic(width, height, nn)
-#player = CarGraphic(width, height)
+
 
 right = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
@@ -31,10 +32,9 @@ rpm = pyglet.text.Label('Hello, world',
                          font_size=20,
                          x=50, y=300,
                          anchor_x='center', anchor_y='center', color=(0, 255, 255, 255))
-#track = pyglet.sprite.Sprite(pyglet.image.load('test_track.jpg'))
-#track = pyglet.sprite.Sprite(pyglet.image.load('track_graphics.jpg'))
-#track = pyglet.sprite.Sprite(pyglet.image.load('monza.jpg'))
-track = pyglet.sprite.Sprite(pyglet.image.load('testtrack.jpg'))
+
+#track = pyglet.sprite.Sprite(pyglet.image.load('testtrack.jpg'))
+track = pyglet.sprite.Sprite(pyglet.image.load('yasmarina.jpg'))
 scale = 2.5
 track.scale = scale
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
         track.y = 540-(player.pos_y * scale)
         right.text = str(round(player.velocity_local_x*3.6, 2))
         gear.text = str(player.alive_counter)
-        rpm.text = str(round(dt, 4))
+        rpm.text = str(round(player.score, 4))
 
     @window.event
     def on_key_press(symbol, modifiers):
