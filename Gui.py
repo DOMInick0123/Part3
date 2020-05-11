@@ -3,8 +3,11 @@ from pyglet.window import key
 from CarGraphic import CarGraphic
 import numpy as np
 
+# class which shows graphically how the controller is working
+
 width = 1920
 height = 1080
+# picking of the tested individual
 networks = np.load('run2/grid.npy', allow_pickle=True)
 bs = 0.
 nn = []
@@ -12,11 +15,9 @@ for network in networks:
     if network[7] > bs:
         bs = network[7]
         nn = network[0]
-print(bs)
-nn = np.load('individuals.npy', allow_pickle=True)[1622]
 player = CarGraphic(width, height, nn)
 
-
+# initialisation of labels
 right = pyglet.text.Label('Hello, world',
                           font_name='Times New Roman',
                           font_size=20,
@@ -33,8 +34,8 @@ rpm = pyglet.text.Label('Hello, world',
                          x=50, y=300,
                          anchor_x='center', anchor_y='center', color=(0, 255, 255, 255))
 
-#track = pyglet.sprite.Sprite(pyglet.image.load('testtrack.jpg'))
-track = pyglet.sprite.Sprite(pyglet.image.load('yasmarina.jpg'))
+# initialisation of the track
+track = pyglet.sprite.Sprite(pyglet.image.load('testtrack.jpg'))
 scale = 2.5
 track.scale = scale
 

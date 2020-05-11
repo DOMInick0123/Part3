@@ -2,6 +2,9 @@ import math
 import pyglet
 import Car
 
+# class created for gui integration
+# addition of rotations in degrees as pyglet sprite works in degrees and not radians
+
 
 class CarGraphic(pyglet.sprite.Sprite, Car.Car):
     img = None
@@ -9,7 +12,7 @@ class CarGraphic(pyglet.sprite.Sprite, Car.Car):
     def __init__(self, width, height,  network=None):
         Car.Car.__init__(self, network)
         if self.img is None:
-            self.img = pyglet.image.load('CarSmall.png')
+            self.img = pyglet.image.load('Car.png')
             self.img.anchor_x = int((Car.rear_wing + Car.c) * 2.5)
             self.img.anchor_y = int(Car.width * 2.5 / 2)
         pyglet.sprite.Sprite.__init__(self, self.img, x=width//2, y=height//2)

@@ -4,6 +4,8 @@ import numpy as np
 from PIL import Image
 
 
+# class, which represents a car and its behaviour
+
 # constants
 b = 1.2  # in m, distance from CG to front axle
 c = 1.8  # in m, distance from CG to rear axle
@@ -21,10 +23,10 @@ rr = 30 * drag  # constant for rolling resistance
 ca_r = -5.2  # cornering stiffness for rear wheels
 ca_f = -5.  # cornering stiffness for front wheels
 tyre_grip = 2.5  # diameter of friction circle
-braking_constant = 20000.
+braking_constant = 20000.  # in N
 gear_ratios = [2.66, 1.78, 1.3, 1., 0.74, 0.5]
 differential_ratio = 3.42
-g = 9.81
+g = 9.81  # in ms**-2
 greyscale = 100
 scale = 2
 
@@ -41,15 +43,11 @@ c_rpm = 8596/29
 
 transmission_efficiency = 0.8
 rad_to_rpm = 30 / (math.pi * wheel_radius)
-#track = np.array(Image.open('testtrack.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-track = np.array(Image.open('yasmarina.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-#checkpoints = ((987, 277), (810, 326), (662, 291), (502, 290), (287, 418), (324, 604), (357, 704), (579, 1043), (723, 1093), (1738, 869), (1822, 825), (1995, 850), (2181, 846), (2266, 684), (2157, 459), (1980, 364), (1865, 303), (1818, 342), (1763, 369), (1435, 319), (1218, 325), (1165, 356))
-checkpoints = (
-        (1571, 1439), (1789, 1909), (1941, 2306), (2293, 2561), (2449, 2805), (2544, 2892), (2667, 2991), (2581, 3005), (404, 2096),
-        (394, 1971), (229, 1130), (470, 250), (559, 242), (630, 248), (762, 480), (379, 960), (441, 1208),
-        (601, 1231), (794, 1219), (708, 1539), (567, 1939), (1031, 1818))
+track = np.array(Image.open('testtrack.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+checkpoints = ((987, 277), (810, 326), (662, 291), (502, 290), (287, 418), (324, 604), (357, 704), (579, 1043), (723, 1093), (1738, 869), (1822, 825), (1995, 850), (2181, 846), (2266, 684), (2157, 459), (1980, 364), (1865, 303), (1818, 342), (1763, 369), (1435, 319), (1218, 325), (1165, 356))
 
 
+# function for converting rpm of the engine to the available torque
 def rpm_to_torque(rpm):
     return max(((a_rpm * rpm + b_rpm) * rpm + c_rpm), 1000)
 
@@ -58,11 +56,8 @@ class Car:
 
     def __init__(self, network=None):
         self.pos_x = 1100.
-        self.pos_x = 1031.
         self.pos_y = 320.
-        self.pos_y = 1818.
         self.rot_rad = math.radians(160)
-        self.rot_rad = math.radians(45)
         self.sin_rotation = math.sin(self.rot_rad)
         self.cos_rotation = math.cos(self.rot_rad)
         self.steering = 0.
@@ -133,6 +128,7 @@ class Car:
             self.score *= 0.7
             self.alive = False
             return
+        # check if checkpoint crossed
         check_x, check_y = checkpoints[self.checkpoint]
         if (self.pos_x-check_x)**2+(self.pos_y-check_y)**2 < 160:
             self.checkpoint += 1
@@ -173,6 +169,7 @@ class Car:
         force_resistance = (drag * self.velocity_local_x + rr) * self.velocity_local_x
         force_long = force_traction - force_resistance
 
+        # calculation of acceleration and velocity
         acceleration_local_x = force_long / car_mass
         acceleration_local_y = force_lat / car_mass
         self.acceleration_last = acceleration_local_x
@@ -181,8 +178,7 @@ class Car:
         self.velocity_x += dt * acceleration_x
         self.velocity_y += dt * acceleration_y
 
-        angular_torque = force_lateral_front * b - force_lateral_rear * c
-
+        # checking the conditions of death
         speed = (self.velocity_x ** 2 + self.velocity_y ** 2) ** 0.5
         self.distance += dt*speed
         if self.alive_counter >= 140000 or (speed < 8 and self.alive_counter > 300) or (speed < 0.5 and self.acceleration_pedal == 0) or self.checkpoint == len(checkpoints):
@@ -190,18 +186,22 @@ class Car:
             self.alive = False
             return
 
+        # calculation of angular velocity and rotation
+        angular_torque = force_lateral_front * b - force_lateral_rear * c
         acceleration_angular = angular_torque / inertia
         self.velocity_angular += dt * acceleration_angular
-
         if self.velocity_angular != 0:
             self.rot_rad += dt * self.velocity_angular
             self.sin_rotation = math.sin(self.rot_rad)
             self.cos_rotation = math.cos(self.rot_rad)
 
+        # movement of the car
         self.pos_x += scale * dt * self.velocity_x
         self.pos_y += scale * dt * self.velocity_y
 
+    # function to get outputs from neural network
     def think(self):
+        # getting inputs from sensors
         cos_30 = math.cos(self.rot_rad + math.radians(30))
         sin_30 = math.sin(self.rot_rad + math.radians(30))
         cos_60 = math.cos(self.rot_rad + math.radians(60))
@@ -209,9 +209,13 @@ class Car:
         left = self.sensor(-cos_30, sin_30, 30)
         right = self.sensor(sin_60, cos_60, 30)
         self.mid += right-left
+
+        # setting inputs of the neural network
         inputs = [self.velocity_local_x / 65.234, self.velocity_local_y / 30., self.velocity_angular, left,
                   self.sensor(-cos_60, sin_60, 120),
                   self.sensor(self.sin_rotation, self.cos_rotation, 200), self.sensor(sin_30, cos_30, 120), right]
+
+        # getting outputs from the neural network
         outputs = []
         for layer in self.network:
             outputs.clear()
@@ -221,11 +225,15 @@ class Car:
                     val += layer[0][i][j] * inputs[j]
                 outputs.append(math.tanh(val))
             inputs = outputs.copy()
+
+        # setting the controls according to the outputs
         self.acceleration_pedal = (outputs[0] + 1) / 2
         self.avg_acc += self.acceleration_pedal
         self.braking_pedal = (outputs[1] + 1) / 2
         self.avg_brk += self.braking_pedal
         self.steering = outputs[2]
+
+        # automatic transmission
         if self.rpm > 5500:
             self.gear += 1
             self.gear = min(5, self.gear)
@@ -233,12 +241,14 @@ class Car:
             self.gear -= 1
             self.gear = max(0, self.gear)
 
+    # function for getting info from sensors
     def sensor(self, sin, cos, ran):
         for i in np.arange(0, ran, 0.5):
             if track[int(self.pos_y - i * sin*scale)][int(self.pos_x + i * cos*scale)] > greyscale:
                 return i / ran
         return 1
 
+    # function for copying individuals
     def copy(self):
         from copy import deepcopy
         return Car(deepcopy(self.network))

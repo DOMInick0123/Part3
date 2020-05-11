@@ -4,7 +4,7 @@ import numpy as np
 from random import choice, random
 from Car import Car
 from copy import deepcopy
-
+# main class of the algorithm
 # constants
 physics_engine = 5
 acc_pedal = 6
@@ -16,6 +16,7 @@ population_size = 1024
 process_count = 16
 
 
+# function which pick a random individual and create an offspring by using mutation and crossover
 def mutate(grid):
     if len(grid) == 0:
         return Car()
@@ -23,6 +24,7 @@ def mutate(grid):
     car2 = deepcopy(choice(grid)[0])
     nn = []
     r = 0.992
+    # crossover
     for i in range(len(car1)):
         weights = []
         bias = []
@@ -39,6 +41,7 @@ def mutate(grid):
             else:
                 bias.append(car2[i][1][j])
         nn.append((weights, bias))
+    # mutation
     for layer in nn:
         for i in range(len(layer[0])):
             for j in range(len(layer[0][i])):
@@ -50,6 +53,7 @@ def mutate(grid):
     return Car(nn)
 
 
+# function which will place the individual into correct place in the grid
 def to_grid(car):
     global best_car, improv
     if car.score > 0:
@@ -71,6 +75,7 @@ def to_grid(car):
             improv += 1
 
 
+# thread function for simulating cars on the queue
 def thread_function(in_q, out_q):
     while 1:
         car = in_q.get()
@@ -89,6 +94,7 @@ if __name__ == '__main__':
     improv = 0
     cars = []
     networks = []
+    # initialisation of the helper processes
     in_q = Queue()
     out_q = Queue()
     processes = []
@@ -96,6 +102,7 @@ if __name__ == '__main__':
         x = Process(target=thread_function, args=(in_q, out_q))
         x.start()
         processes.append(x)
+    # reading file of already generated individuals if they exist
     try:
         networks = np.load('grid.npy', allow_pickle=True)
     except IOError:
@@ -112,6 +119,7 @@ if __name__ == '__main__':
             p.score = network[7]
             p.mid = network[8]
             to_grid(p)
+    # reading the past progress from the algorithm
     try:
         progress = np.load('progress.npy', allow_pickle=True).tolist()
     except IOError:
@@ -124,6 +132,7 @@ if __name__ == '__main__':
         for _ in range(population_size):
             car = out_q.get()
             to_grid(car)
+        # creation of flattened array of filled individuals from the grid
         networks = []
         filled = 0
         avg_score = 0
@@ -132,10 +141,13 @@ if __name__ == '__main__':
                 networks.append((p.network, p.alive_counter, p.avg_acc, p.avg_brk, p.max_lateral, p.distance, p.fuel, p.score, p.mid))
                 filled += 1
                 avg_score += p.score
+        # printing progress
         print("Gen:", gen, "Best score:", best_car.score, 'Filled spaces in grid:', filled, '/',
               acc_pedal * brk_pedal * lateral * fc_c * avg_dis, 'Improved:', improv, 'Average score:', avg_score/filled)
         progress.append([best_car.score, filled, avg_score/filled])
+        # saving grid and progress into files
         np.save('grid.npy', np.asarray(networks), allow_pickle=True)
         np.save('progress.npy', np.asarray(progress), allow_pickle=True)
+    # stopping the helper processes
     for _ in range(process_count):
         in_q.put(None)
