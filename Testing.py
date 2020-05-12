@@ -299,7 +299,7 @@ def pick_individuals():
     np.save('individuals.npy', top, allow_pickle=True)
 
 
-def check_tracks():
+def do_tests():
     top = np.load('individuals.npy', allow_pickle=True)
     in_q = Queue()
     out_q = Queue()
@@ -308,64 +308,64 @@ def check_tracks():
         x = Process(target=thread_function, args=(in_q, out_q))
         x.start()
         processes.append(x)
-    # cars = [0]*2000
-    # track = np.array(Image.open('monza.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-    # checkpoints = (
-    #     (2317, 488), (2257, 514), (1638, 339), (833, 1357), (718, 1582), (655, 1628), (453, 2329), (988, 2434),
-    #     (2654, 1172), (2881, 1141), (3014, 1109), (4978, 1320), (4158, 732))
-    # for i in range(4):
-    #     for j in range(500):
-    #         in_q.put((Car(top[i*500+j], 4158., 732., 170, track, checkpoints), i*500+j))
-    #     for j in range(500):
-    #         a, b = out_q.get()
-    #         if j % 25 == 0:
-    #             print(i*500+j)
-    #         cars[b] = a
-    # cars = np.asarray(cars)/(len(checkpoints)*5)
-    # np.save('score1.npy', cars, allow_pickle=True)
-    # cars = [0]*2000
-    # track = np.array(Image.open('yasmarina.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-    # checkpoints = (
-    #     (1571, 1439), (1789, 1909), (1941, 2306), (2293, 2561), (2449, 2805), (2544, 2892), (2667, 2991), (2581, 3005), (404, 2096),
-    #     (394, 1971), (229, 1130), (470, 250), (559, 242), (630, 248), (762, 480), (379, 960), (441, 1208),
-    #     (601, 1231), (794, 1219), (708, 1539), (567, 1939), (1031, 1818))
-    # for i in range(4):
-    #     for j in range(500):
-    #         in_q.put((Car(top[i * 500 + j], 1031., 1818., 45, track, checkpoints), i * 500 + j))
-    #     for j in range(500):
-    #         a, b = out_q.get()
-    #         if j % 25 == 0:
-    #             print(i * 500 + j)
-    #         cars[b] = a
-    # cars = np.asarray(cars)/(len(checkpoints)*5)
-    # np.save('score2.npy', cars, allow_pickle=True)
+    cars = [0]*2000
+    track = np.array(Image.open('monza.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+    checkpoints = (
+        (2317, 488), (2257, 514), (1638, 339), (833, 1357), (718, 1582), (655, 1628), (453, 2329), (988, 2434),
+        (2654, 1172), (2881, 1141), (3014, 1109), (4978, 1320), (4158, 732))
+    for i in range(4):
+        for j in range(500):
+            in_q.put((Car(top[i*500+j], 4158., 732., 170, track, checkpoints), i*500+j))
+        for j in range(500):
+            a, b = out_q.get()
+            if j % 25 == 0:
+                print(i*500+j)
+            cars[b] = a
+    cars = np.asarray(cars)/(len(checkpoints)*5)
+    np.save('score1.npy', cars, allow_pickle=True)
+    cars = [0]*2000
+    track = np.array(Image.open('yasmarina.jpg').transpose(Image.FLIP_TOP_BOTTOM))
+    checkpoints = (
+        (1571, 1439), (1789, 1909), (1941, 2306), (2293, 2561), (2449, 2805), (2544, 2892), (2667, 2991), (2581, 3005), (404, 2096),
+        (394, 1971), (229, 1130), (470, 250), (559, 242), (630, 248), (762, 480), (379, 960), (441, 1208),
+        (601, 1231), (794, 1219), (708, 1539), (567, 1939), (1031, 1818))
+    for i in range(4):
+        for j in range(500):
+            in_q.put((Car(top[i * 500 + j], 1031., 1818., 45, track, checkpoints), i * 500 + j))
+        for j in range(500):
+            a, b = out_q.get()
+            if j % 25 == 0:
+                print(i * 500 + j)
+            cars[b] = a
+    cars = np.asarray(cars)/(len(checkpoints)*5)
+    np.save('score2.npy', cars, allow_pickle=True)
     checkpoints = (
         (987, 277), (810, 326), (662, 291), (502, 290), (287, 418), (324, 604), (357, 704), (579, 1043), (723, 1093),
         (1738, 869), (1822, 825), (1995, 850), (2181, 846), (2266, 684), (2157, 459), (1980, 364), (1865, 303),
         (1818, 342), (1763, 369), (1435, 319), (1218, 325), (1165, 356))
     cars = [0]*2000
     track = np.array(Image.open('testtrack.jpg').transpose(Image.FLIP_TOP_BOTTOM))
-    # for i in range(4):
-    #     for j in range(500):
-    #         in_q.put((Car(top[i * 500 + j], 1100., 320., 160, track, checkpoints, fuel=900), i * 500 + j))
-    #     for j in range(500):
-    #         a, b = out_q.get()
-    #         if j % 25 == 0:
-    #             print(i * 500 + j)
-    #         cars[b] = a
-    # cars = np.asarray(cars)/(len(checkpoints)*5)
-    # np.save('score3.npy', cars, allow_pickle=True)
-    # cars = [0]*2000
-    # for i in range(4):
-    #     for j in range(500):
-    #         in_q.put((Car(top[i * 500 + j], 1100., 320., 160, track, checkpoints, braking_constant=8000), i * 500 + j))
-    #     for j in range(500):
-    #         a, b = out_q.get()
-    #         if j % 25 == 0:
-    #             print(i * 500 + j)
-    #         cars[b] = a
-    # cars = np.asarray(cars)/(len(checkpoints)*5)
-    # np.save('score4.npy', cars, allow_pickle=True)
+    for i in range(4):
+        for j in range(500):
+            in_q.put((Car(top[i * 500 + j], 1100., 320., 160, track, checkpoints, fuel=900), i * 500 + j))
+        for j in range(500):
+            a, b = out_q.get()
+            if j % 25 == 0:
+                print(i * 500 + j)
+            cars[b] = a
+    cars = np.asarray(cars)/(len(checkpoints)*5)
+    np.save('score3.npy', cars, allow_pickle=True)
+    cars = [0]*2000
+    for i in range(4):
+        for j in range(500):
+            in_q.put((Car(top[i * 500 + j], 1100., 320., 160, track, checkpoints, braking_constant=8000), i * 500 + j))
+        for j in range(500):
+            a, b = out_q.get()
+            if j % 25 == 0:
+                print(i * 500 + j)
+            cars[b] = a
+    cars = np.asarray(cars)/(len(checkpoints)*5)
+    np.save('score4.npy', cars, allow_pickle=True)
     for i in range(4):
         for j in range(500):
             in_q.put((Car(top[i * 500 + j], 1100., 320., 160, track, checkpoints, tyre_grip=0.1), i * 500 + j))
@@ -402,6 +402,7 @@ def sum_scores():
         test4.append(s4[br])
         test5.append(s5[br])
         summ.append(s[br])
+
     plt.bar(np.arange(6)-width*2.5, test1, width, label='Test1')
     plt.bar(np.arange(6)-width*1.5, test2, width, label='Test2')
     plt.bar(np.arange(6)-width*0.5, test3, width, label='Test3')
@@ -412,20 +413,25 @@ def sum_scores():
     plt.xlabel("Individual")
     plt.ylabel("Score in %")
     plt.title("Scores of the best individual in each test")
-    # plt.title("Sorted scores of individuals in each test")
-    # plt.plot(range(2000), np.sort(s1), label='Test 1')
-    # plt.plot(range(2000), np.sort(s2), label='Test 2')
-    # plt.plot(range(2000), np.sort(s3), label='Test 3')
-    # plt.plot(range(2000), np.sort(s4), label='Test 4')
-    # plt.plot(range(2000), np.sort(s5), label='Test 5')
-    # plt.plot(range(2000), np.sort(s), label='Average', color='k', linewidth=3)
+    plt.legend()
+    plt.show()
+
+    plt.xlabel("Individual")
+    plt.ylabel("Score in %")
+    plt.title("Sorted scores of individuals in each test")
+    plt.plot(range(2000), np.sort(s1), label='Test 1')
+    plt.plot(range(2000), np.sort(s2), label='Test 2')
+    plt.plot(range(2000), np.sort(s3), label='Test 3')
+    plt.plot(range(2000), np.sort(s4), label='Test 4')
+    plt.plot(range(2000), np.sort(s5), label='Test 5')
+    plt.plot(range(2000), np.sort(s), label='Average', color='k', linewidth=3)
     plt.legend()
     plt.show()
 
 
 if __name__ == '__main__':
-    #check_grid()
-    #pick_individuals()
-    #graphs()
-    #check_tracks()
+    # check_grid()
+    # graphs()
+    pick_individuals()
+    do_tests()
     sum_scores()

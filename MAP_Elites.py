@@ -14,6 +14,7 @@ fc_c = 6
 avg_dis = 6
 population_size = 1024
 process_count = 16
+simulation_end = 15000
 
 
 # function which pick a random individual and create an offspring by using mutation and crossover
@@ -124,7 +125,7 @@ if __name__ == '__main__':
         progress = np.load('progress.npy', allow_pickle=True).tolist()
     except IOError:
         progress = []
-    for gen in range(15000):
+    for gen in range(simulation_end):
         car_counter = 0
         improv = 0
         for _ in range(population_size):
